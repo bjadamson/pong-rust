@@ -38,7 +38,7 @@ enum AssetId {
 // Loads the different textures as pairs with their corresponding AssetId
 fn load_assets() -> HashMap<AssetId, Texture> {
   let error_prefix = "Could not load asset.";
-  let dir = "./assets";
+  let dir = "./assets/";
   let blue_paddle_filename = "blue-paddle.png";
   let green_paddle_filename = "green-paddle.png";
   let blue_paddle_texture = Texture::new_from_file(dir + blue_paddle_filename)
@@ -55,23 +55,26 @@ fn load_assets() -> HashMap<AssetId, Texture> {
 // Construct sprites for each pair in assets, where the sprites returned
 // have been constructed with references to the textures in assets.
 // This should work in theory, as the assets container already lives.
-// How do I annotate the return value here (like I did on load_sprite)
+// How do I annotate the return value here (like I did on create_sprite)
 // To get the compiler to understand my intent?
 fn create_sprites<'r>(assets: &'r HashMap<AssetId, Texture>) -> HashMap<AssetId, Sprite> {
-  let error_msg = "Failed to create sprite from texture.";
-  let zz: HashMap<AssetId, Sprite> =  assets.iter()
+  let error_msg = "Could not create sprite from texture.";
+  let sprite_map: HashMap<AssetId, Sprite> =  assets.iter()
     .map(|(asset_id, texture)| -> (AssetId, Sprite) {
       let sprite = Sprite::new_with_texture(texture).expect(error_msg);
       return (asset_id.clone(), sprite);
     }).collect();
-  return zz;
+  return sprite_map;
 }
 
 // Construct a sprite, that is created from a texture stored inside assets.
 // This works!!
-fn load_sprite<'r>(assets: &'r HashMap<AssetId, Texture>) -> Sprite<'r> {
-  let (assetid, texture) = assets.iter().next().expect("No elements in assets!");
-  return Sprite::new_with_texture(texture).expect("F");
+fn create_sprite<'r>(assets: &'r HashMap<AssetId, Texture>) -> Sprite<'r> {
+  let (assetid, texture) = assets.iter().next()
+    .expect("No elements in assets!");
+
+  return Sprite::new_with_texture(texture)
+    .expect("Could not create the sprite.");
 }
 
 // Logic for keyboard events
@@ -97,7 +100,11 @@ fn loop_events(window: &mut RenderWindow) {
 fn main() {
   let (mut window, clear_color) = create_window();
   let assets = load_assets();
-  //let sprites = create_sprites(&assets);
+
+  // works!
+  let first_sprite = create_sprite(&assets);
+  // doesn't work, yet!
+  let sprites = create_sprites(&assets);
 
   while window.is_open() {
     loop_events(&mut window); 
