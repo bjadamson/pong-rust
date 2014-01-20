@@ -27,14 +27,9 @@ fn create_window() -> (RenderWindow, Color) {
   return (window, clear_color);
 }  // fn create_window
 
-// In the rsfml code, the Sprite structure has an explicit lifetime s.
-// The Sprite structure has a private optional<&'s Texture>.
-// This structure, ts, a logical grouping.. let's not do that.
-// Instead, let's return only the textures from load_assets(), and create the
-// sprites by passing in the textures.
-#[deriving(Eq)]
-#[deriving(Clone)]
-#[deriving(IterBytes)]
+#[deriving(Eq)]        // Yes
+#[deriving(Clone)]     // these are
+#[deriving(IterBytes)] // all necessary.
 enum AssetId {
   bluepaddle,
   greenpaddle
@@ -62,7 +57,7 @@ fn load_assets() -> HashMap<AssetId, Texture> {
 // This should work in theory, as the assets container already lives.
 // How do I annotate the return value here (like I did on load_sprite)
 // To get the compiler to understand my intent?
-fn load_sprites<'r>(assets: &'r HashMap<AssetId, Texture>) -> HashMap<AssetId, Sprite> {
+fn create_sprites<'r>(assets: &'r HashMap<AssetId, Texture>) -> HashMap<AssetId, Sprite> {
   let error_msg = "Failed to create sprite from texture.";
   let zz: HashMap<AssetId, Sprite> =  assets.iter()
     .map(|(asset_id, texture)| -> (AssetId, Sprite) {
@@ -102,7 +97,7 @@ fn loop_events(window: &mut RenderWindow) {
 fn main() {
   let (mut window, clear_color) = create_window();
   let assets = load_assets();
-  //let sprites = load_sprites(&assets);
+  //let sprites = create_sprites(&assets);
 
   while window.is_open() {
     loop_events(&mut window); 
