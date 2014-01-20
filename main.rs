@@ -57,23 +57,6 @@ fn load_assets() -> HashMap<AssetId, Texture> {
   return hs;
 } // fn load_assets
 
-// What I want to do use the move_iter() function on the assets (input hashmap)
-// to iterate through all the elements, moving each one to a different hashmap.
-/*
-fn load_sprites(assets: &HashMap<AssetId, Texture>) -> HashMap<AssetId, Sprite> {
-  let error_msg = "Failed to create sprite from texture.";
-
-  // I get the same compiler error if I write the code *this* way
-  let map_body: |(&AssetId, &Texture)| -> (AssetId, Sprite) = |(x, y)| {
-    let sprite = Sprite::new_with_texture(y).expect(error_msg);
-    return (x.clone(), sprite);
-  };
-  return assets.iter()
-    .map(map_body)
-  .collect();
-}
-*/
-
 // Construct sprites for each pair in assets, where the sprites returned
 // have been constructed with references to the textures in assets.
 // This should work in theory, as the assets container already lives.
@@ -92,8 +75,8 @@ fn load_sprites<'r>(assets: &'r HashMap<AssetId, Texture>) -> HashMap<AssetId, S
 // Construct a sprite, that is created from a texture stored inside assets.
 // This works!!
 fn load_sprite<'r>(assets: &'r HashMap<AssetId, Texture>) -> Sprite<'r> {
-  let p = assets.get(&bluepaddle);
-  return Sprite::new_with_texture(p).expect("F");
+  let (assetid, texture) = assets.iter().next().expect("No elements in assets!");
+  return Sprite::new_with_texture(texture).expect("F");
 }
 
 // Logic for keyboard events
