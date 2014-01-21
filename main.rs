@@ -65,7 +65,8 @@ fn create_sprites<'r>(assets: &'r HashMap<AssetId, Texture>)
     -> HashMap<AssetId, Sprite<'r>> {
   let error_msg = "Could not create sprite from texture.";
   let sprite_map = assets.iter()
-    .map(|(asset_id, texture)| {
+    .map(|(asset_id, texture)| { // asset_id, texture by reference/borrowed ptr.
+      // Create the sprite with a borrowed ptr to the texture
       let sprite = Sprite::new_with_texture(texture).expect(error_msg);
       return (asset_id.clone(), sprite);
     }).collect();
