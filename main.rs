@@ -98,8 +98,9 @@ struct PongGameState<'r> {
 }  // struct PongGameState
 
 impl<'r> PongGameState<'r> {
-  fn new_default(paddles_param: ~[Paddle<'r>], window_param: &'r mut RenderWindow,
-      player_id_param: PlayerId) -> PongGameState<'r> {
+  fn new_default(paddles_param: ~[Paddle<'r>],
+      window_param: &'r mut RenderWindow, player_id_param: PlayerId)
+      -> PongGameState<'r> {
     assert!((player_id_param as uint) < paddles_param.len());
     return PongGameState { keys: ~[], paddles: paddles_param,
       player_id: player_id_param, window: window_param };
@@ -219,7 +220,7 @@ fn main() {
 
   // Each state needs a reference to the items it needs to update..
   // For example, it needs a reference to the paddle array.
-  let player_id = FromPrimitive::from_int(1).expect("PlayerId");
+  let player_id = FromPrimitive::from_int(0).expect("PlayerId");
   let mut state = PongGameState::new_default(paddles, &mut window, player_id);
 
   // when I press the 'hjkl' keys, move the first paddle..
