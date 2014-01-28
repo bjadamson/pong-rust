@@ -60,30 +60,46 @@ struct Ball<'r> {
   velocity: Vector2f
 }  // struct Ball
 
-struct PongGameState<'r> {
-  window:  &'r mut RenderWindow,
-  paddles: ~[Paddle<'r>],
+struct PlayerContext<'r> {
   player_id: PlayerId,
-  ball: Ball<'r>,
-  keys: ~[keyboard::Key]
+  paddle:    Paddle<'r>,
+  keys:      ~[keyboard::Key]
+}  // struct PlayerContext
+
+struct PongGameState<'r> {
+  window: &'r mut RenderWindow,
+  player_contexts: ~[PlayerContext<'r>],
+  //paddles: ~[Paddle<'r>],
+  //player_id: PlayerId,
+  ball: Ball<'r>//,
+  //keys: ~[keyboard::Key]
 }  // struct PongGameState
 
 impl<'r> PongGameState<'r> {
+// Returns the initial state of the game.
 fn new_default(paddles_param: ~[Paddle<'r>], window_param: &'r mut RenderWindow,
-    player_id_param: PlayerId, ball_param: Ball<'r>) -> PongGameState<'r> {
-  assert!((player_id_param as uint) < paddles_param.len());
+    ball_param: Ball<'r>) -> PongGameState<'r> {
+  // This is badass, <3 enumerate().map() :D
+  let player_context_iter = paddles_param.iter()
+    .enumerate() // generate (index, item) pairs ...
+    .map(|(index, paddle_item)| {
+      return PlayerContext {
+        player_id: FromPrimitive::from_uint(index).unwrap(),
+        paddle: *paddle_item,
+        keys: ~[]
+      };
+    });
   return PongGameState {
-      keys: ~[],
-      paddles: paddles_param,
-      player_id: player_id_param,
-      window: window_param,
-      ball: ball_param
+    window: window_param,
+    ball: ball_param,
+    player_contexts: player_context_iter.collect()
   };
 }  // fn new_default()
   
 // Construct a new state from an existing one.
 fn from_previous(prev: PongGameState<'r>) -> PongGameState<'r> {
   let mut state = prev;
+  /*
   let player_index: uint = state.player_id as uint;
   { 
     let player_paddle = &mut state.paddles[player_index];
@@ -134,6 +150,7 @@ fn from_previous(prev: PongGameState<'r>) -> PongGameState<'r> {
     }
   }
   state.keys.clear();
+  */
   return state;
 }  // fn from_previous()
 
@@ -260,16 +277,16 @@ fn load_assets() -> HashMap<PlayerId, Texture> {
 
 // Loop forever polling events from the window, until there are no more events.
 // When there are no more events, break out of the loop.
-fn loop_events<'r>(prev: PongGameState<'r>) -> PongGameState<'r> {
-  let mut state = prev;
+fn loop_events<'r>(player_context: PlayerContext<'r>, window: &'r RenderWindow) -> PlayerContext<'r> {
+  let mut context = player_context;
   loop {
-    match state.window.poll_event() {
-      event::Closed               => state.window.close(), 
-      event::KeyPressed{code, ..} => { state.keys.push(code); },
+    match window.poll_event() {
+      //event::Closed               => context.state.window.close(), 
+      event::KeyPressed{code, ..} => { context.keys.push(code); },
       _                           => break  // Maybe have to do event::NoEvent
     }
   }
-  return state;
+  return context;
 }  // fn loop_events()
 
 // Entry point for pong
@@ -284,13 +301,13 @@ fn main() {
 
   // Each state needs a reference to the items it needs to update..
   // For example, it needs a reference to the paddle array.
-  let player_id = FromPrimitive::from_int(0).expect("PlayerId");
-  let mut state = PongGameState::new_default(paddles, &mut window, player_id, ball);
+  let mut state = PongGameState::new_default(paddles, &mut window, ball);
 
+  let ref ctx = state.player_contexts[0];
   // when I press the 'j | k' keys, move the first paddle..
   while state.window.is_open() {
     state.window.clear(&clear_color);
-    state = loop_events(state); 
+    ctx = loop_events(*ctx, state.window); 
     state = PongGameState::from_previous(state);
     // update_state
 
