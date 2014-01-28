@@ -2,16 +2,17 @@ extern mod native;  // TO start a native thread
 extern mod rsfml;   // Multimedia library
 
 use rsfml::window::{ContextSettings, VideoMode, event, keyboard, Close};
-use rsfml::graphics::{RenderWindow, Color, Texture, Sprite, IntRect, CircleShape};
+use rsfml::graphics::{RenderWindow, Color, Texture, Sprite, IntRect, FloatRect, CircleShape};
 use rsfml::system::vector2::Vector2f;
 
 use std::hashmap::HashMap;
-use std::num::FromPrimitive;
+use std::num::{FromPrimitive, abs};
 use std::rand::{task_rng, Rng};
 
 // Window Defaults
-static WINDOW_WIDTH:  uint = 1024;
-static WINDOW_HEIGHT: uint = 768;
+static FPS_LIMIT:     uint = 60;
+static WINDOW_WIDTH:  uint = 800;
+static WINDOW_HEIGHT: uint = 600;
 static PIXEL_COUNT:   uint = 32;
 static PADDLE_WIDTH:  i32 = 20;  // tyeps are weird due to RSFML binding.
 static PADDLE_HEIGHT: i32 = 50;  // tyeps are weird due to RSFML binding.
@@ -22,17 +23,17 @@ static LHS_START_POS_X:    f32 = 0. + PADDLE_PADDING;
 static RHS_START_POS_X:    f32 = (WINDOW_WIDTH as f32) - PADDLE_PADDING - (PADDLE_WIDTH as f32);
 static bottom_start_pos_y: f32 = (WINDOW_HEIGHT as f32) - PADDLE_PADDING - (PADDLE_HEIGHT as f32);
 
-static PADDLE_VELOCITY: f32 = 5.;
-static UP_VECTOR:       Vector2f  = Vector2f { x:  0., y:  1. * PADDLE_VELOCITY };
-static DOWN_VECTOR:     Vector2f  = Vector2f { x:  0., y: -1. * PADDLE_VELOCITY };
+static PADDLE_VELOCITY: f32 = 15.;
+//static UP_VECTOR:       Vector2f  = Vector2f { x:  0., y:  1. * PADDLE_VELOCITY };
+//static DOWN_VECTOR:     Vector2f  = Vector2f { x:  0., y: -1. * PADDLE_VELOCITY };
 
 static BALL_RADIUS:            f32 = 10.;
 static BALL_OUTLINE_THICKNESS: f32 = 3.;
 static BALL_INITIAL_POSITION:  Vector2f = Vector2f {
-    x: (WINDOW_WIDTH as f32) / 2.,
+    x: (WINDOW_WIDTH as f32)   / 2.,
     y: (WINDOW_HEIGHT as f32)  / 2.
 };
-static BALL_VELOCITY:      f32 = 5.;
+static BALL_VELOCITY:      f32 = 1.25;
 static BALL_FILL_COLOR:    Color = Color { red: 255, green: 0, blue: 0, alpha: 255 };
 static BALL_OUTLINE_COLOR: Color = Color { red: 255, green: 0, blue: 255, alpha: 255 };
 
@@ -50,7 +51,8 @@ enum PlayerId {
 }  // enum PlayerId
 
 struct Paddle<'r> {
-  sprite: Sprite<'r>
+  sprite: Sprite<'r>,
+  velocity: Vector2f
 }  // struct Paddle
 
 struct Ball<'r> {
@@ -67,40 +69,74 @@ struct PongGameState<'r> {
 }  // struct PongGameState
 
 impl<'r> PongGameState<'r> {
-  fn new_default(paddles_param: ~[Paddle<'r>], window_param: &'r mut RenderWindow,
-      player_id_param: PlayerId, ball_param: Ball<'r>) -> PongGameState<'r> {
-    assert!((player_id_param as uint) < paddles_param.len());
-    return PongGameState {
-        keys: ~[],
-        paddles: paddles_param,
-        player_id: player_id_param,
-        window: window_param,
-        ball: ball_param
-    };
-  }  // fn new_default()
+fn new_default(paddles_param: ~[Paddle<'r>], window_param: &'r mut RenderWindow,
+    player_id_param: PlayerId, ball_param: Ball<'r>) -> PongGameState<'r> {
+  assert!((player_id_param as uint) < paddles_param.len());
+  return PongGameState {
+      keys: ~[],
+      paddles: paddles_param,
+      player_id: player_id_param,
+      window: window_param,
+      ball: ball_param
+  };
+}  // fn new_default()
   
-  // Construct a new state from an existing one.
-  fn from_previous(prev: PongGameState<'r>) -> PongGameState<'r> {
-    let mut state = prev;
-    let player_index: uint = state.player_id as uint;
-    { 
-      let player_paddle = &mut state.paddles[player_index];
-      for key in state.keys.iter() {
-        match *key {
-          keyboard::Escape => state.window.close(),
-          keyboard::K => { player_paddle.sprite.move(&UP_VECTOR); },
-          keyboard::J => { player_paddle.sprite.move(&DOWN_VECTOR); },
-          _ => {}
-        }
+// Construct a new state from an existing one.
+fn from_previous(prev: PongGameState<'r>) -> PongGameState<'r> {
+  let mut state = prev;
+  let player_index: uint = state.player_id as uint;
+  { 
+    let player_paddle = &mut state.paddles[player_index];
+    for key in state.keys.iter() {
+      match *key {
+        keyboard::Escape => state.window.close(),
+        keyboard::K => player_paddle.velocity.y -= BALL_VELOCITY,
+        keyboard::J => player_paddle.velocity.y += BALL_VELOCITY,
+        _ => {}
       }
     }
-    {
-      let velocity = state.ball.velocity * BALL_VELOCITY;
-      state.ball.drawable.move(&velocity);
+    if (player_paddle.velocity.y > 5.) {
+      player_paddle.velocity.y = 5.;
+    } else if (player_paddle.velocity.y < -5.) {
+      player_paddle.velocity.y = -5.;
     }
-    state.keys.clear();
-    return state;
-  }  // fn from_previous()
+    player_paddle.sprite.move(&player_paddle.velocity);
+  }
+  {
+    state.ball.drawable.move(&state.ball.velocity);
+  }
+  {
+    // test if ball intersects with the paddles
+    let intersecting_rect = FloatRect::new(0.,0.,0.,0.);
+    let ref paddle = state.paddles[player_index];
+    let paddle_bounds = paddle.sprite.get_global_bounds();
+    let ball_bounds = state.ball.drawable.get_global_bounds();
+    let intersects = FloatRect::intersects(&ball_bounds, &paddle_bounds, &intersecting_rect);
+
+    if intersects {
+      if intersecting_rect.width > intersecting_rect.height {
+        state.ball.velocity.y *= -1.;
+      }
+      else if intersecting_rect.height > intersecting_rect.width {
+        state.ball.velocity.x *= -1.;
+      }
+    }
+  }
+  {
+    let ball_bounds = state.ball.drawable.get_global_bounds();
+    state.ball.velocity.y = match ball_bounds.top {
+      y_pos if (y_pos <= 0. || y_pos >= (WINDOW_HEIGHT as f32)) => -1. * state.ball.velocity.y,
+      _ => state.ball.velocity.y
+    };
+    let ball_bounds_right = ball_bounds.left + ball_bounds.width;
+    if (ball_bounds.left <= 0. || ball_bounds_right > (WINDOW_WIDTH as f32)) {
+      state.ball = create_ball();
+    }
+  }
+  state.keys.clear();
+  return state;
+}  // fn from_previous()
+
 }  // impl PongGameState
 
 // OSX Prevents creating a window on the main thread, so start up a new thread
@@ -118,20 +154,22 @@ fn create_window() -> (RenderWindow, Color) {
   let video_mode  = VideoMode::new_init(WINDOW_WIDTH, WINDOW_HEIGHT, PIXEL_COUNT);
   let clear_color = Color::new_RGB(255, 255, 255);
 
-  let window = match RenderWindow::new(video_mode, title, Close, &settings) {
+  let mut window = match RenderWindow::new(video_mode, title, Close, &settings) {
     Some(window) => window,
     None         => fail!("Error creating RenderWindow.")
   };
+  window.set_framerate_limit(FPS_LIMIT);
   return (window, clear_color);
 }  // fn create_window()
 
 // Create a ball that's initialized with the values we declare statically.
 fn create_ball() -> Ball {
+  static x_values: [f32, ..4] = [-1., -0.75, 0.75, 1.];
   let mut rng = task_rng();
   let mut ball = Ball {
       drawable: CircleShape::new().expect("Could not instantiate ball"),
       velocity: Vector2f {
-          x: rng.gen_range::<f32>(-1., 1.),
+          x: *rng.choose_option(x_values).unwrap(),
           y: rng.gen_range::<f32>(-1., 1.)
       }
   };
@@ -177,7 +215,8 @@ fn create_paddles(sprites: HashMap<PlayerId, Sprite>) -> ~[Paddle] {
       let error_msg = "Error cloning sprite.";
       let mut paddle = Paddle {
         // todo: do I really have to clone? I just want to move the sprite's ...
-        sprite: sprite_item.clone().expect(error_msg)
+        sprite: sprite_item.clone().expect(error_msg),
+        velocity: Vector2f::new(0., 0.)
       };
       paddle.sprite.set_position(start_pos_item);
       return paddle; 
@@ -206,25 +245,23 @@ fn load_assets() -> HashMap<PlayerId, Texture> {
 } // fn load_assets
 
 // The scan fn below returns an iterator that will iterator over the sprite's'
-  // in assets HashMap.
-  // The initial state of scan() is the sprites iterator.
-  // The first parameter to scan is a lambda fn which the first parameter will
-  // be the mutable state threaded through each invocation that scan does. We
-  // don't need mutable state here, so use _. The second parameter of the lambda
-  // is the reference to the current value (in our case a pair of values from
-  // the HashMap (sprite_iter is a scan::iter)
+// in assets HashMap.
+// The initial state of scan() is the sprites iterator.
+// The first parameter to scan is a lambda fn which the first parameter will
+// be the mutable state threaded through each invocation that scan does. We
+// don't need mutable state here, so use _. The second parameter of the lambda
+// is the reference to the current value (in our case a pair of values from
+// the HashMap (sprite_iter is a scan::iter)
 
-  /*let mut sprite_iter = sprites.iter()
-    .scan(sprites.iter(), |_, (_, sprite)| {
-      return sprite.clone();
-    }); */
-
-
+/*let mut sprite_iter = sprites.iter()
+  .scan(sprites.iter(), |_, (_, sprite)| {
+    return sprite.clone();
+  }); */
 
 // Loop forever polling events from the window, until there are no more events.
 // When there are no more events, break out of the loop.
 fn loop_events<'r>(prev: PongGameState<'r>) -> PongGameState<'r> {
-  let mut state = PongGameState::from_previous(prev);
+  let mut state = prev;
   loop {
     match state.window.poll_event() {
       event::Closed               => state.window.close(), 
@@ -254,6 +291,7 @@ fn main() {
   while state.window.is_open() {
     state.window.clear(&clear_color);
     state = loop_events(state); 
+    state = PongGameState::from_previous(state);
     // update_state
 
     for paddle in state.paddles.iter() {
