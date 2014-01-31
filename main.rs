@@ -51,12 +51,12 @@ enum PlayerId {
 }  // enum PlayerId
 
 struct Paddle<'r> {
-  sprite: Sprite<'r>,
+  sprite: Sprite,
   velocity: Vector2f
 }  // struct Paddle
 
 struct Ball<'r> {
-  drawable: CircleShape<'r>,
+  drawable: CircleShape,
   velocity: Vector2f
 }  // struct Ball
 
@@ -209,13 +209,13 @@ fn create_ball() -> Ball {
 // sprite's are constructed with borrowed pointers to to the textures, this
 // lifetime annotation is necessary to compile.
 fn create_sprites<'r>(assets: &'r HashMap<PlayerId, Texture>)
-    -> HashMap<PlayerId, Sprite<'r>> {
+    -> HashMap<PlayerId, Sprite> {
   let error_msg = "Could not create sprite from texture.";
   let sprite_map = assets.iter()
     .map(|(asset_id, texture)| { // asset_id, texture by reference/borrowed ptr.
       // Create the sprite with a borrowed ptr to the texture
-      let sprite = Sprite::new_with_texture(texture).expect(error_msg);
-      return (asset_id.clone(), sprite);
+      let sprite: Sprite = Sprite::new_with_texture(texture).expect(error_msg);
+      return (asset_id, sprite);
     }).collect();
   return sprite_map;
 }  // fn create_sprites()
