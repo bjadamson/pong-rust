@@ -69,31 +69,32 @@ struct PlayerContext<'r> {
 struct PongGameState<'r> {
   window: &'r mut RenderWindow,
   player_contexts: ~[PlayerContext<'r>],
-  //paddles: ~[Paddle<'r>],
-  //player_id: PlayerId,
   ball: Ball<'r>//,
-  //keys: ~[keyboard::Key]
 }  // struct PongGameState
 
 impl<'r> PongGameState<'r> {
 // Returns the initial state of the game.
-fn new_default(paddles_param: ~[Paddle<'r>], window_param: &'r mut RenderWindow,
-    ball_param: Ball<'r>) -> PongGameState<'r> {
+fn new_default(paddles_param: ~[Paddle], window_param: &'r mut RenderWindow,
+    ball_param: Ball<'r>) -> () {//PongGameState<'r> {
   // This is badass, <3 enumerate().map() :D
-  let player_context_iter = paddles_param.iter()
+  let player_context_iter = paddles_param.move_iter()
     .enumerate() // generate (index, item) pairs ...
     .map(|(index, paddle_item)| {
+      //let zz: &Paddle<'r> = paddle_item;
+      //let pp: Paddle<'r> = (*zz).clone();
+      //let z: Paddle<'r> = *(paddle_item.clone());
       return PlayerContext {
         player_id: FromPrimitive::from_uint(index).unwrap(),
-        paddle: *paddle_item,
+        paddle: paddle_item,
         keys: ~[]
       };
     });
-  return PongGameState {
+  /*return PongGameState {
     window: window_param,
     ball: ball_param,
     player_contexts: player_context_iter.collect()
   };
+*/
 }  // fn new_default()
   
 // Construct a new state from an existing one.
@@ -277,11 +278,12 @@ fn load_assets() -> HashMap<PlayerId, Texture> {
 
 // Loop forever polling events from the window, until there are no more events.
 // When there are no more events, break out of the loop.
-fn loop_events<'r>(player_context: PlayerContext<'r>, window: &'r RenderWindow) -> PlayerContext<'r> {
+fn loop_events<'r>(player_context: PlayerContext<'r>, window: &'r mut RenderWindow)
+    -> PlayerContext<'r> {
   let mut context = player_context;
   loop {
     match window.poll_event() {
-      //event::Closed               => context.state.window.close(), 
+      event::Closed               => window.close(), 
       event::KeyPressed{code, ..} => { context.keys.push(code); },
       _                           => break  // Maybe have to do event::NoEvent
     }
@@ -303,18 +305,21 @@ fn main() {
   // For example, it needs a reference to the paddle array.
   let mut state = PongGameState::new_default(paddles, &mut window, ball);
 
-  let ref ctx = state.player_contexts[0];
+  /*let ctx = state.player_contexts[0];
   // when I press the 'j | k' keys, move the first paddle..
   while state.window.is_open() {
     state.window.clear(&clear_color);
-    ctx = loop_events(*ctx, state.window); 
+    //ctx = loop_events(*ctx, state.window); 
     state = PongGameState::from_previous(state);
     // update_state
 
-    for paddle in state.paddles.iter() {
+    for player_context in state.player_contexts.iter() {
+      state.window.draw(&player_context.paddle.sprite);
+    //for paddle in state.paddles.iter() {
       state.window.draw(&state.ball.drawable);
-      state.window.draw(&paddle.sprite);
+      //state.window.draw(&paddle.sprite);
     }
     state.window.display();
   }
+*/
 }  // fn main()
