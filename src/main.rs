@@ -67,15 +67,13 @@ struct PlayerContext<'r> {
 }  // struct PlayerContext
 
 struct PongGameState<'r> {
-  window: &'r mut RenderWindow,
   player_contexts: ~[PlayerContext<'r>],
   ball: Ball<'r>//,
 }  // struct PongGameState
 
 impl<'r> PongGameState<'r> {
 // Returns the initial state of the game.
-fn new_default(paddles_param: ~[Paddle], window_param: &'r mut RenderWindow,
-    ball_param: Ball<'r>) -> PongGameState<'r> {
+fn new_default(paddles_param: ~[Paddle], ball_param: Ball<'r>) -> PongGameState<'r> {
   let player_context = paddles_param.move_iter()
     .enumerate() // generate (index, item) pairs ...
     .map(|(index, paddle_item)| {
@@ -86,7 +84,6 @@ fn new_default(paddles_param: ~[Paddle], window_param: &'r mut RenderWindow,
       };
     }).collect();
   return PongGameState {
-    window: window_param,
     ball: ball_param,
     player_contexts: player_context
   };
@@ -278,7 +275,7 @@ fn loop_events<'r>(player_context: PlayerContext<'r>, window: &'r mut RenderWind
   let mut context = player_context;
   loop {
     match window.poll_event() {
-      event::Closed               => window.close(), 
+      event::Closed               => { window.close(); fail!("fail") },
       event::KeyPressed{code, ..} => { context.keys.push(code); },
       _                           => break  // Maybe have to do event::NoEvent
     }
@@ -297,12 +294,12 @@ fn main() {
 
   // Each state needs a reference to the items it needs to update..
   // For example, it needs a reference to the paddle array.
-  let mut state = PongGameState::new_default(paddles, &mut window, ball);
+  let state = PongGameState::new_default(paddles, ball);
   let ref ctx = state.player_contexts[0];
   // when I press the 'j | k' keys, move the first paddle..
-  while state.window.is_open() {
-    state.window.clear(&clear_color);
-    //let context = loop_events(ctx, state.window); 
+  while window.is_open() {
+    window.clear(&clear_color);
+    let context = loop_events((*ctx).clone(), &mut window); 
     //state = PongGameState::from_previous(state);
     // update_state
 
@@ -312,6 +309,6 @@ fn main() {
       //state.window.draw(&state.ball.drawable);
       //state.window.draw(&paddle.sprite);
     //}
-    state.window.display();
+    window.display();
   }
 }  // fn main()
